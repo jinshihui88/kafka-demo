@@ -1,0 +1,63 @@
+server:
+  # 8080 常被本机其他服务占用，示例固定使用 8090
+  port: 8090
+
+spring:
+  application:
+    name: kafka-demo
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    producer:
+      # Kafka 确认机制：等待所有当前 ISR 副本确认
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      retries: 2147483647
+      batch-size: 32768
+      compression-type: lz4
+      properties:
+        # 启用幂等生产者，降低重试导致的重复写入
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        delivery.timeout.ms: 120000
+        request.timeout.ms: 30000
+        linger.ms: 5
+
+    consumer:
+      group-id: order-service-group
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: 100
+      properties:
+        max.poll.interval.ms: 300000
+        session.timeout.ms: 45000
+        heartbeat.interval.ms: 15000
+
+    listener:
+      # 单条记录处理成功后提交 Offset，由 Spring 容器管理提交时机
+      ack-mode: record
+      concurrency: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+app:
+  kafka:
+    topics:
+      order-created: order-created
+      order-created-dlt: order-created-dlt
+
+logging:
+  level:
+    org.apache.kafka: warn
+    org.springframework.kafka: warn
+    com.example.kafka: info
